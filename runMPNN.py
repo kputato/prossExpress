@@ -157,7 +157,7 @@ available in the json file."
         io = bpdb.PDBIO()
         parser = bpdb.PDBParser()
 
-        my_pdb_structure = parser.get_structure('test', 'example_run/A0A0K8P6T7.pdb')
+        my_pdb_structure = parser.get_structure('test', pdb)
 
         # renumber residue in my_pdb_structure
         residue_N = 1
@@ -172,7 +172,7 @@ available in the json file."
                             residue_N += 1
                 
         io.set_structure(my_pdb_structure) 
-        io.save('example_run/A0A0K8P6T7.pdb',  preserve_atom_numbering=True) 
+        io.save(pdb,  preserve_atom_numbering=True) 
 
         return None
     
