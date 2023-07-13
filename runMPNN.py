@@ -213,7 +213,7 @@ available in the json file."
         # dictionaries to keep track of scores/sequences of mutated positions
         sequences = defaultdict(list)
         mutations = defaultdict(list)
-        scores = {}
+        scores = defaultdict(list)
         
         # get native sequence for future comparison
         with open(f".temp/{self.name}.fasta", "r") as f:
@@ -252,64 +252,51 @@ available in the json file."
                                 --fixed_positions_jsonl .temp/fixed_pdbs.jsonl", shell=True)
             
             os.remove(".temp/fixed_pdbs.jsonl")
+            
+            # record scores
+            s = np.load(f"./.temp/scores/{self.name}.npz")
+            s = (s['score'].astype(str)).tolist() 
 
-            ctr = False # don't include native sequence 
+            ctr = -1  
             for record in SeqIO.parse(f"./.temp/seqs/{self.name}.fa", "fasta"):
-                if ctr:
+                if ctr >= 0: # skip native sequence
                     sequence = str(record.seq)
-                    # ensure you are only recording sequences that have been mutated or are not empty
-                    for i in range(len(native)):
+                    
+                    for i in range(len(native)):  # ensure you are only recording sequences that have been mutated 
                         if native[i] != sequence[i]:
                             sequences[pos].append(sequence)
-                            
-                            # record what native position has been mutated to
-                            mut = f"{native[i]}    {sequence[i]}" 
+                            mut = f"{native[i]}    {sequence[i]}" # record what native position has been mutated to
                             mutations[pos].append(mut) 
-                            
-                            # record scores
-                            s = np.load(f"./.temp/scores/{self.name}.npz")
-                            scores[pos] = (s['score'].astype(str)).tolist() 
-                ctr = True
-
-        # write these to a pandas dataframe    
-        # Create a DataFrame
+                            scores[pos].append(s[ctr])      
+                ctr += 1
+        
         data = []
         for key in sequences.keys():
-            sequence_list = sequences[key]
-            score_list = scores[key]
-            amino_acid_list = mutations[key]
-
-            # Determine the length of the longest list
-            max_length = max(len(sequence_list), len(score_list), len(amino_acid_list))
-
-            for i in range(max_length):
-                sequence = sequence_list[i] if i < len(sequence_list) else ''
-                score = score_list[i] if i < len(score_list) else ''
-                amino_acid = amino_acid_list[i] if i < len(amino_acid_list) else ''
-
-                # Append the data as a dictionary to the list
+            pos = key
+            
+            seqs = sequences[key]
+            muts = mutations[key]
+            s = scores[key]
+            
+            for i in range(len(seqs)):
                 data.append({
-                    'position': key,
-                    'sequence': sequence,
-                    'scores': score,
-                    'wt_resi': amino_acid[0] if amino_acid else '',
-                    'mutated_resi': amino_acid[-1] if amino_acid else ''
-                })
-
-        
-        os.makedirs("results", exist_ok=True)
-        
+                'position': key,
+                'sequence': seqs[i],
+                'scores': s[i],
+                'wt_resi': muts[i].split(" ")[0],
+                'mutated_resi': muts[i].split(" ")[-1]}
+            )
+                
         df = pd.DataFrame(data)
-        df.to_csv(f'results/{self.name}_mpnn.csv',index=False)
-        df2 = pd.read_csv(f"results/{self.name}_mpnn.csv")
-        df2 = df2.dropna()
-        
-        # Rank mutations based on the score in descending order
-        df2['scores'] = pd.to_numeric(df2['scores'])  # Convert 'scores' column to numeric type
-        df3 = df2.sort_values(by='scores', ascending=False).reset_index(drop=True)
-        df3 = df2.drop_duplicates('position', keep='first')
-        df3.to_csv(f'results/{self.name}_mpnn.csv',index=False)
 
+        # Rank mutations based on the score in descending order
+        df['scores'] = pd.to_numeric(df['scores'])  # Convert 'scores' column to numeric type
+        df2 = df.sort_values(by='scores', ascending=False).reset_index(drop=True)
+        df3 = df2.drop_duplicates('position', keep='first')
+        
+        os.makedirs('results',exist_ok=True)
+        df3.to_csv(f"results/{self.name}.csv", index=False)
+        
         return df3.head(10)
    
     def _getSeqs(self, mut: pd):

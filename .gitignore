@@ -1,4 +1,6 @@
 ProteinMPNN/
+.conda/
+A0A0K8P6T7.pdb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
