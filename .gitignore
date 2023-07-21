@@ -1,6 +1,10 @@
 ProteinMPNN/
 .conda/
 A0A0K8P6T7.pdb
+.temp/
+A0A0K8P6T7_env/
+example_run/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
