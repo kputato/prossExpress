@@ -2,6 +2,7 @@ FROM --platform=linux/amd64 mcr.microsoft.com/vscode/devcontainers/python:3.10
 RUN python3.10 -m pip install ipykernel 
 RUN python3.10 -m pip install --no-warn-conflicts 'colabfold[alphafold-minus-jax] @ git+https://github.com/sokrypton/ColabFold'
 RUN python3.10 -m pip install -q  streamlit fair-esm langchain openai Bio torch 
+RUN python3.10 -m pip install -q git+https://github.com/sokrypton/ColabDesign.git@v1.1.1
 
 
 # download MAFFT image

@@ -40,6 +40,7 @@ class runMPNN():
         os.makedirs(".temp", exist_ok=True)
         
         # clean pdb and get native sequence and length
+        print(f"python rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A")
         subprocess.run(f"python rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A", shell=True)
         
         # update native sequence and length
