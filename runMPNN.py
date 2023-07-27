@@ -22,6 +22,8 @@ import pandas as pd
 import time
 from multiprocessing.pool import ThreadPool
 import make_pssm_dict as prep_mpnn
+from tqdm import tqdm
+
 
 
 
@@ -182,6 +184,8 @@ class runMPNN():
         return "One position has been designed, and the amino acid mutation that led \
             to the greatest improvement in thermostability has been recorded."
 
+
+
     def _runMPNN(self):
         """
         Run helper scripts and protein MPNN
@@ -200,8 +204,14 @@ class runMPNN():
 
         # Run MPNN on sequence and mutating +_scoring one by one
         print("Mutating positions one by one...")
+        # Set the number of threads to the number of cores on your machine -1  
         pool = ThreadPool()
-        pool.map(self._task, range(self.seq_len))
+        tasks = range(self.seq_len)
+        
+        # Wrap the task range with tqdm for progress bar
+        for _ in tqdm(pool.imap_unordered(self._task, tasks), total=len(tasks)):
+            pass
+
         pool.close()
         pool.join()
         
@@ -209,6 +219,7 @@ class runMPNN():
         
         return f"MPNN has finished running in {end-start} seconds, \
             and all data has been recorded in .temp/csv"
+
    
    
     def _getSeqs(self):
