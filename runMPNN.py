@@ -8,16 +8,16 @@
 # NOTE: this whole file is zero indexed when talking about sequence positions!
 
 
-from colabfold.colabfold import run_mmseqs2
-from Bio import SeqIO, AlignIO
-from colabdesign.mpnn import mk_mpnn_model
-from colabdesign.mpnn.model import aa_order
+# from colabfold.colabfold import run_mmseqs2
+# from Bio import SeqIO, AlignIO
+# from colabdesign.mpnn import mk_mpnn_model
+# from colabdesign.mpnn.model import aa_order
 from io import StringIO
 import os
 from os import listdir
 import shutil
 import json
-from Bio import SeqIO
+# from Bio import SeqIO
 import subprocess
 from collections import defaultdict
 import pandas as pd
@@ -40,9 +40,10 @@ class runMPNN():
             
         # create a temp file for this tool that will be deleted later
         os.makedirs(".temp", exist_ok=True)
+        os.makedirs("results", exist_ok=True)
         
         # clean pdb and get native sequence and length
-        subprocess.run(f"python rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A", shell=True)
+        subprocess.run(f"python3 rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A", shell=True)
         
         # update native sequence and length
         with open(f"{self.name}_A.fasta", "r") as fasta:
@@ -51,57 +52,57 @@ class runMPNN():
             self.target = f"{self.name}_A.pdb"
             self.name = self.name + "_A"
 
-        # run sequence alignment using colabdesign api
-        run_mmseqs2(self.native, self.name)
+        # # run sequence alignment using colabdesign api
+        # run_mmseqs2(self.native, self.name)
 
-        # find and parse a3m file to write to string
-        seq_str = ''
-        records = SeqIO.parse(f"{self.name}_env/uniref.a3m", "fasta")
+        # # find and parse a3m file to write to string
+        # seq_str = ''
+        # records = SeqIO.parse(f"{self.name}_env/uniref.a3m", "fasta")
 
-        for record in records:
-            seq_str += (">" + str(record.id) + '\n')
-            seq_str += (str(record.seq).replace("-","") + '\n')
+        # for record in records:
+        #     seq_str += (">" + str(record.id) + '\n')
+        #     seq_str += (str(record.seq).replace("-","") + '\n')
 
-        #run ClustalO on mmseq2 sequences
-        child = subprocess.Popen(['mafft', '--quiet', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        child.stdin.write(seq_str.encode())
-        child_out = child.communicate()[0].decode('utf8')
-        alignment = AlignIO.read(StringIO(child_out), 'fasta')
-        child.stdin.close()
+        # #run ClustalO on mmseq2 sequences
+        # child = subprocess.Popen(['mafft', '--quiet', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        # child.stdin.write(seq_str.encode())
+        # child_out = child.communicate()[0].decode('utf8')
+        # alignment = AlignIO.read(StringIO(child_out), 'fasta')
+        # child.stdin.close()
 
-        # take aligned target sequence, and get all positions with gaps
-        # remove these gap positions from other sequences
-        reference = alignment[0].seq
-        to_del = []
-        for i in range(len(reference)):
-            if reference[i] == "-":
-                to_del.append(i)
+        # # take aligned target sequence, and get all positions with gaps
+        # # remove these gap positions from other sequences
+        # reference = alignment[0].seq
+        # to_del = []
+        # for i in range(len(reference)):
+        #     if reference[i] == "-":
+        #         to_del.append(i)
                 
-        for align in alignment:
-            pos = {}
-            for i in range(len(align.seq)):
-                pos[i] = align.seq[i]
-            for key in to_del:
-                pos.pop(key)
-            align.seq = "".join(list(pos.values()))
+        # for align in alignment:
+        #     pos = {}
+        #     for i in range(len(align.seq)):
+        #         pos[i] = align.seq[i]
+        #     for key in to_del:
+        #         pos.pop(key)
+        #     align.seq = "".join(list(pos.values()))
         
-        # run MPNN and update json database
-        self.get_pssm(alignment=alignment)
-        status = self.run_mpnn()
-        print(status)
+        # # run MPNN and update json database
+        # self.get_pssm(alignment=alignment)
+        # status = self.run_mpnn()
+        # print(status)
 
-        # obtain top 10 mutations
-        data = self.get_muts()
-        data.to_csv(f"results/{self.name}.csv", index=False)
+        # # obtain top 10 mutations
+        # data = self.get_muts()
+        # data.to_csv(f"results/{self.name}.csv", index=False)
         
-        with open(f".temp/{self.name}_sequences.json", "w") as f:
-            json.dump(self.get_seqs(data), f)
+        with open(f"results/{self.name}_sequences.json", "w") as f:
+            json.dump(self.get_seqs(pd.read_csv(f"results/{self.name}.csv")), f)
         
-        os.makedirs("results", exist_ok=True)
+        
         
         # # delete temp folder and MSA folder
-        # shutil.rmtree("./.temp")
-        shutil.rmtree(f"./{self.name}_env")
+        shutil.rmtree("./.temp")
+        # shutil.rmtree(f"./{self.name}_env")
         # TODO: clean up .fasta 'n .pdb
 
         return "MPNN has successfully finished making designed sequences."
@@ -243,25 +244,14 @@ class runMPNN():
         return df.head(10)
     
     def get_seqs(self, data):
-        # create sequence with top 5 scoring mutations
-        muts = data.head(5)
-        to_mutate = dict(zip(muts['Position'], muts['Mutant']))
-        mpnn_seqs = []
+        # create sequence with all the mutations
+        to_mutate = dict(zip(data['Position'], data['Mutant']))
         mut_seq = list(self.native)
+        print(self.native)
         for i in range(len(self.native)):
             if (i+1) in to_mutate:
                 mut_seq[i] = to_mutate[i+1]
-        mpnn_seqs.append(''.join(mut_seq))
-        
-        # iteratively add next five mutations
-        iterative_muts = data.tail(5)
-        to_mutate = dict(zip(iterative_muts['Position'], iterative_muts['Mutant']))
-        for key in to_mutate:
-            mut_seq[key-1] = to_mutate[key]
-            mpnn_seqs.append(''.join(mut_seq))
-            
-        return mpnn_seqs
-
+        return "".join(mut_seq)
 
 x = runMPNN("example_run/6md5.pdb")
 x.run()
