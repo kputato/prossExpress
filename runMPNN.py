@@ -5,6 +5,8 @@
 #   Obtain top five mutations 
 #   Iteratively add five additional mutations 
 
+# NOTE: this whole file is zero indexed when talking about sequence positions!
+
 
 from colabfold.colabfold import run_mmseqs2
 from Bio import SeqIO, AlignIO
@@ -84,15 +86,18 @@ class runMPNN():
             align.seq = "".join(list(pos.values()))
         
         # run MPNN and update json database
-        self._getPSSM(alignment=alignment)
-        status = self._runMPNN()
+        self.get_pssm(alignment=alignment)
+        status = self.run_mpnn()
         print(status)
 
-        # obtain mutation sequences for top 10 mutations
-        data = self._getSeqs()
+        # obtain top 10 mutations
+        data = self.get_muts()
+        data.to_csv(f"results/{self.name}.csv", index=False)
+        
+        with open(f".temp/{self.name}_sequences.json", "w") as f:
+            json.dump(self.get_seqs(data), f)
         
         os.makedirs("results", exist_ok=True)
-        data.to_csv(f"results/{self.name}.csv", index=False)
         
         # # delete temp folder and MSA folder
         # shutil.rmtree("./.temp")
@@ -102,7 +107,7 @@ class runMPNN():
         return "MPNN has successfully finished making designed sequences."
 
     
-    def _getPSSM(self, alignment):
+    def get_pssm(self, alignment):
         """Get a PSSM matrix by running psi blast against MSA object; process it for MPNN"""
         
         # Write MSA to FASTA file and turn it into a database
@@ -181,7 +186,7 @@ class runMPNN():
         return "One position has been designed, and the amino acid mutation that led \
             to the greatest improvement in thermostability has been recorded."
 
-    def _runMPNN(self):
+    def run_mpnn(self):
         """
         Run helper scripts and protein MPNN
         """
@@ -209,8 +214,7 @@ class runMPNN():
         return f"MPNN has finished running in {end-start} seconds, \
             and all data has been recorded in .temp/csv"
    
-   
-    def _getSeqs(self):
+    def get_muts(self):
         
         all_data = {
             "Position": [],
@@ -237,26 +241,29 @@ class runMPNN():
         df.sort_values("Score", ascending=False, inplace=True,ignore_index=True)
         
         return df.head(10)
-    #     # create sequence with top 5 scoring mutations
-    #     muts = mut.head(5)
-    #     to_mutate = dict(zip(muts['position'], muts['mutated_resi']))
-    #     mpnn_seqs = []
-    #     for i in range(len(native)):
-    #         if (i+1) in to_mutate:
-    #             mut_seq[i] = to_mutate[i+1]
-    #     mpnn_seqs.append(''.join(mut_seq))
+    
+    def get_seqs(self, data):
+        # create sequence with top 5 scoring mutations
+        muts = data.head(5)
+        to_mutate = dict(zip(muts['Position'], muts['Mutant']))
+        mpnn_seqs = []
+        mut_seq = list(self.native)
+        for i in range(len(self.native)):
+            if (i+1) in to_mutate:
+                mut_seq[i] = to_mutate[i+1]
+        mpnn_seqs.append(''.join(mut_seq))
         
-    #     # iteratively add next five mutations
-    #     iterative_muts = mut.tail(5)
-    #     to_mutate = dict(zip(iterative_muts['position'], iterative_muts['mutated_resi']))
-    #     for key in to_mutate:
-    #         mut_seq[key-1] = to_mutate[key]
-    #         mpnn_seqs.append(''.join(mut_seq))
+        # iteratively add next five mutations
+        iterative_muts = data.tail(5)
+        to_mutate = dict(zip(iterative_muts['Position'], iterative_muts['Mutant']))
+        for key in to_mutate:
+            mut_seq[key-1] = to_mutate[key]
+            mpnn_seqs.append(''.join(mut_seq))
             
-    #     return mpnn_seqs
+        return mpnn_seqs
 
 
-x = runMPNN("example_run/7nei.pdb")
+x = runMPNN("example_run/6md5.pdb")
 x.run()
 
 
