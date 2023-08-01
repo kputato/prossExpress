@@ -8,16 +8,16 @@
 # NOTE: this whole file is zero indexed when talking about sequence positions!
 
 
-# from colabfold.colabfold import run_mmseqs2
-# from Bio import SeqIO, AlignIO
-# from colabdesign.mpnn import mk_mpnn_model
-# from colabdesign.mpnn.model import aa_order
+from colabfold.colabfold import run_mmseqs2
+from Bio import SeqIO, AlignIO
+from colabdesign.mpnn import mk_mpnn_model
+from colabdesign.mpnn.model import aa_order
 from io import StringIO
 import os
 from os import listdir
 import shutil
 import json
-# from Bio import SeqIO
+from Bio import SeqIO
 import subprocess
 from collections import defaultdict
 import pandas as pd
@@ -29,9 +29,9 @@ import make_pssm_dict as prep_mpnn
 
 class runMPNN():
     
-    def __init__(self, pdb_path: str):
+    def __init__(self, pdb_id: str):
         self.target = ""
-        self.name = pdb_path.split("/")[-1].replace(".pdb","")
+        self.name = pdb_id 
         self.native = ""
         self.seq_len = 0
         
@@ -41,16 +41,20 @@ class runMPNN():
         # create a temp file for this tool that will be deleted later
         os.makedirs(".temp", exist_ok=True)
         os.makedirs("results", exist_ok=True)
+        os.makedirs("example_run", exist_ok=True)
         
-        # clean pdb and get native sequence and length
-        subprocess.run(f"python3 rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A", shell=True)
+        # get pdbs from alphafold and place in a folder
         
-        # update native sequence and length
-        with open(f"{self.name}_A.fasta", "r") as fasta:
-            self.native = fasta.readlines()[-1].replace("\n","")
-            self.seq_len = len(self.native)
-            self.target = f"{self.name}_A.pdb"
-            self.name = self.name + "_A"
+        
+        # # clean pdb and get native sequence and length
+        # subprocess.run(f"python rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A", shell=True)
+        
+        # # update native sequence and length
+        # with open(f"{self.name}.fasta", "r") as fasta:
+        #     self.native = fasta.readlines()[-1].replace("\n","")
+        #     self.seq_len = len(self.native)
+        #     self.target = f"{self.name}.pdb"
+        #     self.name = self.name 
 
         # # run sequence alignment using colabdesign api
         # run_mmseqs2(self.native, self.name)
@@ -95,15 +99,15 @@ class runMPNN():
         # data = self.get_muts()
         # data.to_csv(f"results/{self.name}.csv", index=False)
         
-        with open(f"results/{self.name}_sequences.json", "w") as f:
-            json.dump(self.get_seqs(pd.read_csv(f"results/{self.name}.csv")), f)
+        # with open(f"results/{self.name}_sequences.json", "w") as f:
+        #     json.dump(self.get_seqs(pd.read_csv(f"results/{self.name}.csv")), f)
         
         
         
-        # # delete temp folder and MSA folder
-        shutil.rmtree("./.temp")
+        # # # delete temp folder and MSA folder
+        # shutil.rmtree("./.temp")
         # shutil.rmtree(f"./{self.name}_env")
-        # TODO: clean up .fasta 'n .pdb
+        # # TODO: clean up .fasta 'n .pdb
 
         return "MPNN has successfully finished making designed sequences."
 
@@ -247,13 +251,12 @@ class runMPNN():
         # create sequence with all the mutations
         to_mutate = dict(zip(data['Position'], data['Mutant']))
         mut_seq = list(self.native)
-        print(self.native)
         for i in range(len(self.native)):
             if (i+1) in to_mutate:
-                mut_seq[i] = to_mutate[i+1]
+                mut_seq[i] = f"<{to_mutate[i+1]}>"
         return "".join(mut_seq)
 
-x = runMPNN("example_run/6md5.pdb")
+x = runMPNN("3c98")
 x.run()
 
 
