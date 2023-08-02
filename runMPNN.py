@@ -8,31 +8,31 @@
 # NOTE: this whole file is zero indexed when talking about sequence positions!
 
 
-from colabfold.colabfold import run_mmseqs2
-from Bio import SeqIO, AlignIO
-from colabdesign.mpnn import mk_mpnn_model
-from colabdesign.mpnn.model import aa_order
-from io import StringIO
+# from colabfold.colabfold import run_mmseqs2
+# from Bio import SeqIO, AlignIO
+# from colabdesign.mpnn import mk_mpnn_model
+# from colabdesign.mpnn.model import aa_order
+# from io import StringIO
 import os
-from os import listdir
-import shutil
-import json
-from Bio import SeqIO
-import subprocess
-from collections import defaultdict
-import pandas as pd
-import time
-from multiprocessing.pool import ThreadPool
-import make_pssm_dict as prep_mpnn
+# from os import listdir
+# import shutil
+# import json
+# from Bio import SeqIO
+# import subprocess
+# from collections import defaultdict
+# import pandas as pd
+# import time
+import requests
+# from multiprocessing.pool import ThreadPool
+# import make_pssm_dict as prep_mpnn
 
 
 
 class runMPNN():
     
     def __init__(self, pdb_id: str):
-        self.target = ""
-        self.name = pdb_id 
-        self.native = ""
+        self.name = pdb_id.lower() 
+        self.sequence = ""
         self.seq_len = 0
         
         
@@ -44,51 +44,47 @@ class runMPNN():
         os.makedirs("example_run", exist_ok=True)
         
         # get pdbs from alphafold and place in a folder
+        self.get_fasta(self.name, f"example_run/{self.name}.fasta")
         
-        
-        # # clean pdb and get native sequence and length
-        # subprocess.run(f"python rosetta_helper/clean_pdb.py example_run/{self.name}.pdb A", shell=True)
-        
-        # # update native sequence and length
-        # with open(f"{self.name}.fasta", "r") as fasta:
-        #     self.native = fasta.readlines()[-1].replace("\n","")
-        #     self.seq_len = len(self.native)
-        #     self.target = f"{self.name}.pdb"
-        #     self.name = self.name 
+        # update native sequence and length
+        with open(f"example_run/{self.name}.fasta", "r") as fasta:
+            self.sequence = fasta.readlines()[-1].replace("\n","")
+            self.seq_len = len(self.sequence)
+            self.name = self.name 
 
-        # # run sequence alignment using colabdesign api
-        # run_mmseqs2(self.native, self.name)
+        # run sequence alignment using colabdesign api
+        run_mmseqs2(self.native, self.name)
 
-        # # find and parse a3m file to write to string
-        # seq_str = ''
-        # records = SeqIO.parse(f"{self.name}_env/uniref.a3m", "fasta")
+        # find and parse a3m file to write to string
+        seq_str = ''
+        records = SeqIO.parse(f"{self.name}_env/uniref.a3m", "fasta")
 
-        # for record in records:
-        #     seq_str += (">" + str(record.id) + '\n')
-        #     seq_str += (str(record.seq).replace("-","") + '\n')
+        for record in records:
+            seq_str += (">" + str(record.id) + '\n')
+            seq_str += (str(record.seq).replace("-","") + '\n')
 
-        # #run ClustalO on mmseq2 sequences
-        # child = subprocess.Popen(['mafft', '--quiet', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        # child.stdin.write(seq_str.encode())
-        # child_out = child.communicate()[0].decode('utf8')
-        # alignment = AlignIO.read(StringIO(child_out), 'fasta')
-        # child.stdin.close()
+        #run ClustalO on mmseq2 sequences
+        child = subprocess.Popen(['mafft', '--quiet', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        child.stdin.write(seq_str.encode())
+        child_out = child.communicate()[0].decode('utf8')
+        alignment = AlignIO.read(StringIO(child_out), 'fasta')
+        child.stdin.close()
 
-        # # take aligned target sequence, and get all positions with gaps
-        # # remove these gap positions from other sequences
-        # reference = alignment[0].seq
-        # to_del = []
-        # for i in range(len(reference)):
-        #     if reference[i] == "-":
-        #         to_del.append(i)
+        # take aligned target sequence, and get all positions with gaps
+        # remove these gap positions from other sequences
+        reference = alignment[0].seq
+        to_del = []
+        for i in range(len(reference)):
+            if reference[i] == "-":
+                to_del.append(i)
                 
-        # for align in alignment:
-        #     pos = {}
-        #     for i in range(len(align.seq)):
-        #         pos[i] = align.seq[i]
-        #     for key in to_del:
-        #         pos.pop(key)
-        #     align.seq = "".join(list(pos.values()))
+        for align in alignment:
+            pos = {}
+            for i in range(len(align.seq)):
+                pos[i] = align.seq[i]
+            for key in to_del:
+                pos.pop(key)
+            align.seq = "".join(list(pos.values()))
         
         # # run MPNN and update json database
         # self.get_pssm(alignment=alignment)
@@ -111,7 +107,23 @@ class runMPNN():
 
         return "MPNN has successfully finished making designed sequences."
 
-    
+    def get_fasta(self, pdb_id, output_file):
+        url = f"https://www.rcsb.org/fasta/entry/{pdb_id}"
+        
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raise an exception for any HTTP error
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to retrieve FASTA for PDB ID {pdb_id}: {e}")
+            return
+        
+        fasta_text = response.text.strip()
+        if fasta_text:
+            with open(output_file, "w") as f:
+                f.write(fasta_text)
+        else:
+            print(f"No FASTA data found for PDB ID {pdb_id}")
+
     def get_pssm(self, alignment):
         """Get a PSSM matrix by running psi blast against MSA object; process it for MPNN"""
         
@@ -256,7 +268,7 @@ class runMPNN():
                 mut_seq[i] = f"<{to_mutate[i+1]}>"
         return "".join(mut_seq)
 
-x = runMPNN("3c98")
+x = runMPNN("1LO6")
 x.run()
 
 
