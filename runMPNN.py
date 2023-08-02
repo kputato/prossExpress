@@ -99,7 +99,7 @@ class runMPNN():
         data.to_csv(f"{self.name}/results/{self.name}.csv", index=False)
         
         with open(f"{self.name}/results/{self.name}_sequences.json", "w") as f:
-            json.dump(self.get_seqs(pd.read_csv(f"{self.name}/results/{self.name}.csv")), f)
+            json.dump(self.get_seqs(data), f)
         
         # delete temp folder and MSA folder
         shutil.rmtree("./.temp")
@@ -260,6 +260,7 @@ class runMPNN():
         return df.head(10)
     
     def get_seqs(self, data):
+        print(data)
         # create sequence with the individual mutations
         to_mutate = dict(zip(data['Position'], data['Mutant']))
         mut_seq = list(self.native)
@@ -271,7 +272,7 @@ class runMPNN():
 
 
 
-test_runs = ["6md5", "3c98"]
+test_runs = ["4qum"]
 for tests in test_runs:
     x = runMPNN(tests)
     x.run()
