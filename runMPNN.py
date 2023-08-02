@@ -5,26 +5,27 @@
 #   Obtain top five mutations 
 #   Iteratively add five additional mutations 
 
-# NOTE: this whole file is zero indexed when talking about sequence positions!
+# ! NOTE: this whole file is zero indexed when talking about sequence positions!
 
 
-# from colabfold.colabfold import run_mmseqs2
-# from Bio import SeqIO, AlignIO
-# from colabdesign.mpnn import mk_mpnn_model
-# from colabdesign.mpnn.model import aa_order
-# from io import StringIO
+from colabfold.colabfold import run_mmseqs2
+from Bio import SeqIO, AlignIO
+from colabdesign.mpnn import mk_mpnn_model
+from colabdesign.mpnn.model import aa_order
+
 import os
-# from os import listdir
-# import shutil
-# import json
-# from Bio import SeqIO
-# import subprocess
-# from collections import defaultdict
-# import pandas as pd
-# import time
+from os import listdir
+import json
+import subprocess
+import pandas as pd
+import time
+import shutil
 import requests
-# from multiprocessing.pool import ThreadPool
-# import make_pssm_dict as prep_mpnn
+from io import StringIO
+from collections import defaultdict
+from multiprocessing.pool import ThreadPool
+
+import make_pssm_dict as prep_mpnn
 
 
 
@@ -32,25 +33,26 @@ class runMPNN():
     
     def __init__(self, pdb_id: str):
         self.name = pdb_id.lower() 
-        self.sequence = ""
+        self.native = ""
         self.seq_len = 0
         
         
     def run(self):
             
         # create a temp file for this tool that will be deleted later
-        os.makedirs(".temp", exist_ok=True)
-        os.makedirs("results", exist_ok=True)
-        os.makedirs("example_run", exist_ok=True)
+        os.makedirs(f"{self.name}", exist_ok=True)
+        os.makedirs(f"{self.name}/results", exist_ok=True)
+        os.makedirs(".temp", exist_ok=True) 
         
-        # get pdbs from alphafold and place in a folder
-        self.get_fasta(self.name, f"example_run/{self.name}.fasta")
+        
+        # get fastas from rcsb database
+        # self.get_fasta(self.name, f"example_run/{self.name}.fasta")
+        # run fastas on colabfold alphafold2_batch googlecolab and place folded pdbs in example_run
         
         # update native sequence and length
-        with open(f"example_run/{self.name}.fasta", "r") as fasta:
-            self.sequence = fasta.readlines()[-1].replace("\n","")
-            self.seq_len = len(self.sequence)
-            self.name = self.name 
+        with open(f"benchmarked/{self.name}.fasta", "r") as fasta:
+            self.native = fasta.readlines()[-1].replace("\n","")
+            self.seq_len = len(self.native)
 
         # run sequence alignment using colabdesign api
         run_mmseqs2(self.native, self.name)
@@ -86,27 +88,26 @@ class runMPNN():
                 pos.pop(key)
             align.seq = "".join(list(pos.values()))
         
-        # # run MPNN and update json database
-        # self.get_pssm(alignment=alignment)
-        # status = self.run_mpnn()
-        # print(status)
+        # run MPNN and update json database
+        status_one = self.get_pssm(alignment=alignment)
+        print(status_one)
+        status_two = self.run_mpnn()
+        print(status_two)
 
-        # # obtain top 10 mutations
-        # data = self.get_muts()
-        # data.to_csv(f"results/{self.name}.csv", index=False)
+        # obtain top 10 mutations
+        data = self.get_muts()
+        data.to_csv(f"{self.name}/results/{self.name}.csv", index=False)
         
-        # with open(f"results/{self.name}_sequences.json", "w") as f:
-        #     json.dump(self.get_seqs(pd.read_csv(f"results/{self.name}.csv")), f)
+        with open(f"{self.name}/results/{self.name}_sequences.json", "w") as f:
+            json.dump(self.get_seqs(pd.read_csv(f"{self.name}/results/{self.name}.csv")), f)
         
-        
-        
-        # # # delete temp folder and MSA folder
-        # shutil.rmtree("./.temp")
-        # shutil.rmtree(f"./{self.name}_env")
-        # # TODO: clean up .fasta 'n .pdb
+        # delete temp folder and MSA folder
+        shutil.rmtree("./.temp")
+        shutil.rmtree(f"./{self.name}_env")
 
         return "MPNN has successfully finished making designed sequences."
 
+    # TODO: get fasta from user given pdb file
     def get_fasta(self, pdb_id, output_file):
         url = f"https://www.rcsb.org/fasta/entry/{pdb_id}"
         
@@ -138,7 +139,7 @@ class runMPNN():
         subprocess.run("makeblastdb -in .temp/database.fasta -dbtype prot -out .temp/db", shell=True)
 
         # prepare for psi blast pssm
-        query = f"{self.name}.fasta"
+        query = f"benchmarked/{self.name}.fasta"
 
         # obtain a PSSM matrix using psi blast
         subprocess.run(f'psiblast -query {query} -db .temp/db -num_iterations 3 -out_ascii_pssm \
@@ -172,7 +173,7 @@ class runMPNN():
             
         # create mpnn model
         mpnn_model = mk_mpnn_model()
-        mpnn_model.prep_inputs(pdb_filename=self.target, 
+        mpnn_model.prep_inputs(pdb_filename=f"{self.name}/{self.name}.pdb", 
                             fix_pos=fixed)
         
         # adjust PSSM probabilities
@@ -208,11 +209,11 @@ class runMPNN():
         Run helper scripts and protein MPNN
         """
         
-        os.makedirs(".temp/csv", exist_ok=True)
+        os.makedirs(f".temp/csv", exist_ok=True)
 
         # Run helper scripts to set up for MPNN
         subprocess.run(f"python ProteinMPNN/helper_scripts/parse_multiple_chains.py \
-                        --input_path ./ \
+                        --input_path {self.name} \
                         --output_path .temp/parsed_pdbs.jsonl", shell=True)
         
         prep_mpnn.make_dict(self.seq_len)
@@ -228,8 +229,7 @@ class runMPNN():
         
         end = time.time()
         
-        return f"MPNN has finished running in {end-start} seconds, \
-            and all data has been recorded in .temp/csv"
+        return f"MPNN has finished running in {end-start} seconds, and all data has been recorded in .temp/csv."
    
     def get_muts(self):
         
@@ -242,12 +242,12 @@ class runMPNN():
         }
         
         # iterate through the csv directory
-        filenames = listdir(".temp/csv")
+        filenames = listdir(f".temp/csv")
         files = [filename for filename in filenames if filename.endswith(".csv")]
         
         for file in files:
             all_data["Position"].append(int(file.replace(".csv","").split("_")[-1]) + 1)
-            with open(".temp/csv/"+file, "r") as f:
+            with open(os.path.join(f".temp/csv", file), "r") as f:
                 data = f.readlines()[0].split(",")
                 all_data["Sequence"].append(data[0])
                 all_data["Wildtype"].append(data[1].split(" ")[0])
@@ -260,7 +260,7 @@ class runMPNN():
         return df.head(10)
     
     def get_seqs(self, data):
-        # create sequence with all the mutations
+        # create sequence with the individual mutations
         to_mutate = dict(zip(data['Position'], data['Mutant']))
         mut_seq = list(self.native)
         for i in range(len(self.native)):
@@ -268,9 +268,12 @@ class runMPNN():
                 mut_seq[i] = f"<{to_mutate[i+1]}>"
         return "".join(mut_seq)
 
-x = runMPNN("1LO6")
-x.run()
 
 
-# benchmark
+
+test_runs = ["6md5", "3c98"]
+for tests in test_runs:
+    x = runMPNN(tests)
+    x.run()
+
 #TODO: install streamlit interface after benchmarking
