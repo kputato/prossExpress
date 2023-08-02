@@ -1,0 +1,16 @@
+Position,Native,prossmpnn_seq,benchmarked,Decription
+39,A,A,D,Only benchmarked differs
+78,A,A,D,Only benchmarked differs
+93,S,S,A,Only benchmarked differs
+109,L,L,Q,Only benchmarked differs
+110,S,S,N,Only benchmarked differs
+5,I,A,I,Only prossmpnn differs
+11,T,S,T,Only prossmpnn differs
+13,A,T,A,Only prossmpnn differs
+15,R,S,R,Only prossmpnn differs
+16,H,T,H,Only prossmpnn differs
+20,N,S,N,Only prossmpnn differs
+28,S,T,S,Only prossmpnn differs
+113,S,T,S,Only prossmpnn differs
+124,G,S,G,Only prossmpnn differs
+130,L,R,L,Only prossmpnn differs
