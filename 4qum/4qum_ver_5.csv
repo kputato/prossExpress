@@ -1,0 +1,29 @@
+Position,Native,prossmpnn_seq,benchmarked,Decription
+8,A,A,R,Only benchmarked differs
+21,I,I,A,Only benchmarked differs
+22,Q,Q,E,Only benchmarked differs
+34,A,A,T,Only benchmarked differs
+37,F,F,C,Only benchmarked differs
+111,S,S,T,Only benchmarked differs
+125,T,T,V,Only benchmarked differs
+137,V,V,T,Only benchmarked differs
+140,H,H,Y,Only benchmarked differs
+144,H,H,Q,Only benchmarked differs
+148,Q,Q,L,Only benchmarked differs
+154,I,I,S,Only benchmarked differs
+158,S,S,I,Only benchmarked differs
+193,D,D,Q,Only benchmarked differs
+208,S,S,G,Only benchmarked differs
+226,V,V,I,Only benchmarked differs
+227,T,T,C,Only benchmarked differs
+230,T,T,V,Only benchmarked differs
+235,T,T,I,Only benchmarked differs
+237,R,R,H,Only benchmarked differs
+5,G,E,E,Both benchmarked and prossmpnn sequences agree on the mutation.
+42,Q,E,E,Both benchmarked and prossmpnn sequences agree on the mutation.
+109,K,T,K,Only prossmpnn differs
+113,I,K,I,Only prossmpnn differs
+133,D,E,D,Only prossmpnn differs
+200,Y,V,Y,Only prossmpnn differs
+139,N,T,D,Mutated position but different residues for prossmpnn and native
+151,D,E,T,Mutated position but different residues for prossmpnn and native
