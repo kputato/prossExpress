@@ -1,5 +1,10 @@
 {
-	"build": { "dockerfile": "Dockerfile" },
+
+	"name": "prossexpress",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "prossexpress",
+	"workspaceFolder": "/workspaces/",
+	"overrideCommand": true,
 	"features": {
 		"ghcr.io/devcontainers-contrib/features/zsh-plugins:0": {
 			"plugins": "ssh-agent npm",

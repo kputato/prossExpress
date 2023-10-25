@@ -1,8 +1,4 @@
 FROM --platform=linux/amd64 mcr.microsoft.com/vscode/devcontainers/python:3.10
-RUN python3.10 -m pip install ipykernel 
-RUN python3.10 -m pip install --no-warn-conflicts 'colabfold[alphafold-minus-jax] @ git+https://github.com/sokrypton/ColabFold'
-RUN python3.10 -m pip install -q  streamlit fair-esm langchain openai Bio torch 
-
 
 # download MAFFT image
 
@@ -29,8 +25,5 @@ RUN wget https://mafft.cbrc.jp/alignment/software/mafft_${MAFFT_VER}-1_amd64.deb
     dpkg -i mafft_${MAFFT_VER}-1_amd64.deb && \
     rm mafft_${MAFFT_VER}-1_amd64.deb && \
     mkdir /data
-
-# clone MPNN 
-RUN git clone https://github.com/dauparas/ProteinMPNN.git
 
 
